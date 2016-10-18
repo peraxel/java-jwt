@@ -84,7 +84,11 @@ public class JWTVerifier {
         this(publicKey, null, null);
     }
 
-
+    @SuppressWarnings("WeakerAccess")
+    public Map<String, Object> verify(final String token) throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException,
+            IOException, SignatureException, JWTVerifyException {
+        return verify(token, null);
+    }
     /**
      * Performs JWT validation
      *
@@ -95,7 +99,7 @@ public class JWTVerifier {
      * @throws IllegalStateException when token's structure is invalid or secret / public key does not match algorithm of token
      */
     @SuppressWarnings("WeakerAccess")
-    public Map<String, Object> verify(final String token) throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException,
+    public Map<String, Object> verify(final String token, final String algorithm) throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException,
             IOException, SignatureException, JWTVerifyException {
         if (token == null || "".equals(token)) {
             throw new IllegalStateException("token not set");
@@ -105,9 +109,14 @@ public class JWTVerifier {
             throw new IllegalStateException("Wrong number of segments: " + pieces.length);
         }
         final JsonNode jwtHeader = decodeAndParse(pieces[0]);
-        final Algorithm algorithm = getAlgorithm(jwtHeader);
+        final Algorithm headerAlgorithm = getAlgorithm(jwtHeader);
         final JsonNode jwtPayload = decodeAndParse(pieces[1]);
-        verifySignature(pieces, algorithm);
+        
+        if (algorithm != null && !headerAlgorithm.toString().equals(algorithm)) {
+            throw new IllegalStateException(String.format("Given algorithm %s does not match algorithm in JWT header %s", algorithm, headerAlgorithm));
+        }
+        
+        verifySignature(pieces, headerAlgorithm);
         verifyExpiration(jwtPayload);
         verifyIssuer(jwtPayload);
         verifyAudience(jwtPayload);
